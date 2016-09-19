@@ -36,7 +36,7 @@ func (s *ServiceEntry) complete() bool {
 
 // QueryParam is used to customize how a Lookup is performed
 type QueryParam struct {
-	Service             string               // Service to lookup
+	Services            []string             // Services to lookup
 	Domain              string               // Lookup domain, default "local"
 	Timeout             time.Duration        // Lookup timeout, default 1 second
 	Interface           *net.Interface       // Multicast interface to use
@@ -45,9 +45,9 @@ type QueryParam struct {
 }
 
 // DefaultParams is used to return a default set of QueryParam's
-func DefaultParams(service string) *QueryParam {
+func DefaultParams(services []string) *QueryParam {
 	return &QueryParam{
-		Service:             service,
+		Services:            services,
 		Domain:              "local",
 		Timeout:             time.Second,
 		Entries:             make(chan *ServiceEntry),
@@ -87,8 +87,8 @@ func Query(params *QueryParam) error {
 }
 
 // Lookup is the same as Query, however it uses all the default parameters
-func Lookup(service string, entries chan<- *ServiceEntry) error {
-	params := DefaultParams(service)
+func Lookup(services []string, entries chan<- *ServiceEntry) error {
+	params := DefaultParams(services)
 	params.Entries = entries
 	return Query(params)
 }
@@ -202,7 +202,11 @@ func (c *client) setInterface(iface *net.Interface) error {
 // query is used to perform a lookup and stream results
 func (c *client) query(params *QueryParam) error {
 	// Create the service name
-	serviceAddr := fmt.Sprintf("%s.%s.", trimDot(params.Service), trimDot(params.Domain))
+	var serviceAddrs []string
+	for _, v := range params.Services {
+		s := fmt.Sprintf("%s.%s.", trimDot(v), trimDot(params.Domain))
+		serviceAddrs = append(serviceAddrs, s)
+	}
 
 	// Start listening for response packets
 	msgCh := make(chan *dns.Msg, 32)
@@ -212,20 +216,24 @@ func (c *client) query(params *QueryParam) error {
 	go c.recv(c.ipv6MulticastConn, msgCh)
 
 	// Send the query
-	m := new(dns.Msg)
-	m.SetQuestion(serviceAddr, dns.TypePTR)
-	// RFC 6762, section 18.12.  Repurposing of Top Bit of qclass in Question
-	// Section
-	//
-	// In the Question Section of a Multicast DNS query, the top bit of the qclass
-	// field is used to indicate that unicast responses are preferred for this
-	// particular question.  (See Section 5.4.)
-	if params.WantUnicastResponse {
-		m.Question[0].Qclass |= 1 << 15
-	}
-	m.RecursionDesired = false
-	if err := c.sendQuery(m); err != nil {
-		return err
+
+	for _, v := range serviceAddrs {
+		m := new(dns.Msg)
+		m.SetQuestion(v, dns.TypePTR)
+
+		// RFC 6762, section 18.12.  Repurposing of Top Bit of qclass in Question
+		// Section
+		//
+		// In the Question Section of a Multicast DNS query, the top bit of the qclass
+		// field is used to indicate that unicast responses are preferred for this
+		// particular question.  (See Section 5.4.)
+		if params.WantUnicastResponse {
+			m.Question[0].Qclass |= 1 << 15
+		}
+		m.RecursionDesired = false
+		if err := c.sendQuery(m); err != nil {
+			return err
+		}
 	}
 
 	// Map the in-progress responses
