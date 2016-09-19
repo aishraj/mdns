@@ -1,0 +1,20 @@
+{
+    "services": [
+        {
+            "serviceTag": "_http._tcp",
+            "domain": "",
+            "hostName": "",
+            "port": 8080,
+            "info": "Some random web server",
+            "txt": []
+        },
+                {
+            "serviceTag": "_foobar._tcp",
+            "domain": "",
+            "hostName": "",
+            "port": 4527,
+            "info": "Some random server",
+            "txt": []
+        }
+    ]
+}
