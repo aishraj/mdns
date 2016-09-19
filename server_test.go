@@ -7,7 +7,8 @@ import (
 
 func TestServer_StartStop(t *testing.T) {
 	s := makeService(t)
-	serv, err := NewServer(&Config{Zone: s})
+	z := []Zone{s}
+	serv, err := NewServer(&Config{Zones: z})
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -15,7 +16,9 @@ func TestServer_StartStop(t *testing.T) {
 }
 
 func TestServer_Lookup(t *testing.T) {
-	serv, err := NewServer(&Config{Zone: makeServiceWithServiceName(t, "_foobar._tcp")})
+	s := makeServiceWithServiceName(t, "_foobar._tcp")
+	z := []Zone{s}
+	serv, err := NewServer(&Config{Zones: z})
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

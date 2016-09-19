@@ -31,7 +31,7 @@ var (
 // Config is used to configure the mDNS server
 type Config struct {
 	// Zone must be provided to support responding to queries
-	Zone Zone
+	Zones []Zone
 
 	// Iface if provided binds the multicast listener to the given
 	// interface. If not provided, the system default multicase interface
@@ -242,8 +242,10 @@ func (s *Server) handleQuery(query *dns.Msg, from net.Addr) error {
 // The response to a question may be transmitted over multicast, unicast, or
 // both.  The return values are DNS records for each transmission type.
 func (s *Server) handleQuestion(q dns.Question) (multicastRecs, unicastRecs []dns.RR) {
-	records := s.config.Zone.Records(q)
-
+	var records []dns.RR
+	for _, v := range s.config.Zones {
+		records = append(records, v.Records(q)...)
+	}
 	if len(records) == 0 {
 		return nil, nil
 	}
